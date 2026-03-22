@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 // LED CONTROL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan: #00f5d4;
+      --red: #ff2d55;
+      --dark: #0a0e14;
+      --panel: #0d1117;
+      --border: #1a2a2a;
+      --text: #a8d8cf;
+      --dim: #3a5a54;
+    }
+
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .logo-block { display: flex; align-items: center; gap: 14px; }
+
+   .logo-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+    .logo-text h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(12px, 2.5vw, 16px);
+      color: var(--cyan);
+      letter-spacing: 4px;
+    }
+    .logo-text p {
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 2px;
+      margin-top: 2px;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .sys-time { font-size: 11px; color: var(--dim); letter-spacing: 1px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 8px;
+      border: 1px solid var(--dim);
+      padding: 6px 14px;
+      font-size: 11px;
+      letter-spacing: 2px;
+    }
+    .status-pill .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--cyan);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* MAIN */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(24px, 5vw, 60px) clamp(16px, 4vw, 40px);
+    }
+
+    /* CONTROL PANEL */
+    .control-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: clamp(32px, 6vw, 60px) clamp(28px, 8vw, 80px);
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+    }
+    .control-panel::before {
+      content: '[ LED CONTROL MATRIX ]';
+      position: absolute;
+      top: -1px; left: 20px;
+      background: var(--panel);
+      padding: 0 10px;
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 2px;
+    }
+
+    .control-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    /* LED visual */
+    .led-visual {
+      width: clamp(90px, 18vw, 130px);
+      height: clamp(90px, 18vw, 130px);
+      border-radius: 50%;
+      border: 3px solid var(--dim);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.4s ease;
+    }
+    .led-visual.on {
+      border-color: #4fc3f7;
+      box-shadow: 0 0 20px #4fc3f7, 0 0 50px rgba(79,195,247,0.25);
+    }
+    .led-visual .inner {
+      width: 50%; height: 50%;
+      border-radius: 50%;
+      background: var(--dim);
+      transition: all 0.4s ease;
+    }
+    .led-visual.on .inner {
+      background: #4fc3f7;
+      box-shadow: 0 0 15px #4fc3f7;
+    }
+
+    .led-label {
+      font-family: 'Orbitron', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--dim);
+      text-align: center;
+    }
+    .led-label.on { color: #4fc3f7; }
+
+    .badge {
+      padding: 4px 14px;
+      border: 1px solid;
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+    .badge-on  { border-color: var(--cyan); color: var(--cyan); }
+    .badge-off { border-color: var(--red);  color: var(--red);  }
+    .badge-sys { border-color: var(--dim);  color: var(--dim);  }
+
+    /* Buttons */
+    .btn-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .ctrl-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: clamp(13px, 2.5vw, 16px);
+      letter-spacing: 3px;
+      padding: clamp(12px, 2vw, 16px) clamp(32px, 7vw, 64px);
+      border: 2px solid;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.2s ease;
+      clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    }
+    .btn-on  { border-color: var(--cyan); color: var(--cyan); }
+    .btn-on:hover  { background: var(--cyan); color: var(--dark); }
+    .btn-off { border-color: var(--red);  color: var(--red);  }
+    .btn-off:hover { background: var(--red);  color: var(--dark); }
+
+    /* FOOTER */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 28px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 10px;
+      color: var(--dim);
+      letter-spacing: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-block">
+      
+        <img src="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/0993515e-728c-4c26-a93b-89cda220caad/dk43an4-490938cd-1b00-487d-840a-0af9a1587e1c.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiIvZi8wOTkzNTE1ZS03MjhjLTRjMjYtYTkzYi04OWNkYTIyMGNhYWQvZGs0M2FuNC00OTA5MzhjZC0xYjAwLTQ4N2QtODQwYS0wYWY5YTE1ODdlMWMucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.-85RlpL2z5S3djYHiPb0JjdZjTIUO1uAu66Q3_yvUmo" alt="Logo" class="logo-img">
+      <div class="logo-text">
+        <h1>// ESP32 COMMAND //</h1>
+        <p>ESP32 · GPIO PIN 2 · BLUE LED · WIFI CTRL</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="sys-time" id="sysTime">--:--:--</div>
+      <div class="status-pill">
+        <div class="dot"></div>
+        <span>ONLINE</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="control-panel">
+      <div class="control-inner">
+
+        <div class="led-visual" id="ledVisual">
+          <div class="inner"></div>
+        </div>
+
+        <div class="led-label" id="ledLabel">STANDBY</div>
+
+        <div id="statusBadge" class="badge badge-sys">INITIALIZING...</div>
+
+        <div class="btn-row">
+          <button class="ctrl-btn btn-on"  onclick="setLED(1)">▶ ON</button>
+          <button class="ctrl-btn btn-off" onclick="setLED(0)">■ OFF</button>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <span>ESP32 · BLUE LED CONTROL PANEL</span>
+    <span>APACHE · PHP · MYSQL · 192.168.118.115</span>
+  </footer>
+
+  <audio id="sndOn"  src="/led_control/media/on.mp3"  preload="auto"></audio>
+  <audio id="sndOff" src="/led_control/media/off.mp3" preload="auto"></audio>
+
+  <script>
+    const API = "http://192.168.118.115/led_control/led_control.php";
+
+    setInterval(() => {
+      document.getElementById('sysTime').textContent = new Date().toTimeString().slice(0,8);
+    }, 1000);
+    document.getElementById('sysTime').textContent = new Date().toTimeString().slice(0,8);
+
+    function updateUI(s) {
+      const visual = document.getElementById('ledVisual');
+      const label  = document.getElementById('ledLabel');
+      const badge  = document.getElementById('statusBadge');
+      if (s === 1) {
+        visual.classList.add('on');
+        label.textContent = 'ACTIVE'; label.className = 'led-label on';
+        badge.textContent = 'LED ON'; badge.className = 'badge badge-on';
+      } else {
+        visual.classList.remove('on');
+        label.textContent = 'STANDBY'; label.className = 'led-label';
+        badge.textContent = 'LED OFF'; badge.className = 'badge badge-off';
+      }
+    }
+
+    function setLED(value) {
+      const snd = document.getElementById(value === 1 ? 'sndOn' : 'sndOff');
+      snd.currentTime = 0; snd.play().catch(()=>{});
+      const body = new FormData();
+      body.append("status", value);
+      fetch(API, { method: "POST", body })
+        .then(r => r.json())
+        .then(data => updateUI(data.status))
+        .catch(() => {});
+    }
+
+    fetch(API).then(r => r.json()).then(data => updateUI(data.status)).catch(()=>{});
+  </script>
+</body>
+</html>
